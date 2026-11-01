@@ -1,0 +1,19 @@
+<header class="hero-banner" [class.minimized]="isMinimized">
+  <div class="hero-left-group">
+    <div class="hero-header-row">
+      <div class="hero-badge" [class.fade-out]="isMinimized">STATION_INTERFACE v2.0</div>
+      <div class="command-action-buttons">
+        <button class="glass-ctrl-btn mini-ctrl-btn" (click)="toggleMinimize()" [title]="isMinimized ? 'Expand Command Block' : 'Minimize Command Block'">
+          {{ isMinimized ? '+' : '-' }}
+        </button>
+      </div>
+    </div>
+    
+    <div class="banner-drawer-content" [class.is-hidden]="isMinimized">
+      <h1 class="hero-title">{{ typedTitle }}<span class="cursor" *ngIf="isTypingActive">_</span></h1>
+      <p class="hero-desc">
+        {{ typedDesc }}
+      </p>
+    </div>
+  </div>
+</header>

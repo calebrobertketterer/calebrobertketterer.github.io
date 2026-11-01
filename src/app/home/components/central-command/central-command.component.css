@@ -1,0 +1,173 @@
+.hero-banner {
+  background: rgba(11, 19, 32, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 229, 255, 0.2);
+  border-radius: 8px;
+  padding: 2rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  width: 100%;
+  height: 240px;
+  box-sizing: border-box;
+  overflow: hidden;
+  transition: width 1.0s cubic-bezier(0.16, 1, 0.3, 1),
+              height 1.0s cubic-bezier(0.16, 1, 0.3, 1),
+              padding 1.0s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hero-banner.minimized {
+  width: 54px;
+  height: 54px;
+  padding: 0.5rem;
+}
+
+.hero-left-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  height: 100%;
+  justify-content: flex-start;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.hero-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.75rem;
+  width: 100%;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.hero-badge {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.75rem;
+  color: #00e5ff;
+  background: rgba(0, 229, 255, 0.1);
+  border: 1px solid rgba(0, 229, 255, 0.3);
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  letter-spacing: 1.5px;
+  white-space: nowrap;
+  transition: opacity 0.2s ease;
+}
+
+.hero-badge.fade-out {
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+}
+
+.command-action-buttons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.hero-banner.minimized .command-action-buttons {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.glass-ctrl-btn {
+  background: rgba(16, 30, 48, 0.5);
+  border: 1px solid rgba(0, 229, 255, 0.2);
+  color: #8faec5;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.7rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  transition: all 0.2s ease;
+  user-select: none;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.glass-ctrl-btn.mini-ctrl-btn {
+  font-weight: bold;
+  padding: 0.15rem 0.45rem;
+  min-width: 24px;
+}
+
+.glass-ctrl-btn:hover {
+  background: rgba(0, 229, 255, 0.2);
+  color: #ffffff;
+  border-color: rgba(0, 229, 255, 0.5);
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.3);
+}
+
+.glass-ctrl-btn:active {
+  background: rgba(0, 229, 255, 0.4);
+  color: #00e5ff;
+}
+
+.banner-drawer-content {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin-top: 1rem;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+.banner-drawer-content.is-hidden {
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  visibility: hidden;
+}
+
+.hero-title {
+  font-size: 2.2rem;
+  color: #ffffff;
+  margin: 0;
+  font-weight: 700;
+  letter-spacing: 2px;
+  line-height: 1.2;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.cursor {
+  color: #00e5ff;
+  animation: blink 0.8s infinite;
+  font-weight: 700;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.hero-desc {
+  font-size: 1rem;
+  color: #9cb3c5;
+  margin: 0.75rem 0 0 0;
+  line-height: 1.6;
+}
+
+@media (max-width: 768px) {
+  .hero-banner.minimized {
+    width: 100% !important;
+    height: auto !important;
+    padding: 1.5rem !important;
+  }
+  .hero-banner.minimized .command-action-buttons {
+    position: static !important;
+    transform: none !important;
+  }
+}
