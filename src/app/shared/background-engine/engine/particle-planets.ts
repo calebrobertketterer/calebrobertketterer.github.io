@@ -1,17 +1,14 @@
-// Planet manager handling elliptical orbits, moons, and configurable semi-randomized variables.
+// Planet manager handling semi-random elliptical orbits and semi-random elliptical moon paths.
 import { Planet, Moon } from './particle.model';
 
 export class ParticlePlanets {
-  // ==========================================
-  // CONFIGURABLE MIN / MAX RANDOM VARIABLES
-  // ==========================================
   private readonly configParams = {
-    minRadius: 20,
-    maxRadius: 40,
+    minRadius: 10,
+    maxRadius: 50,
     minOrbitBand: 0.18,
     maxOrbitBand: 0.45,
     minMoonCount: 0,
-    maxMoonCount: 2,
+    maxMoonCount: 3,
     minCooldownMs: 5000,
     maxCooldownMs: 7500,
     minParticleThreshold: 10,
@@ -45,15 +42,18 @@ export class ParticlePlanets {
 
       const moonCount = Math.floor(this.configParams.minMoonCount + Math.random() * (this.configParams.maxMoonCount - this.configParams.minMoonCount + 1));
       const moons: Moon[] = [];
-      let lastMoonOrbit = radius * 1.8;
+      let lastMoonDist = radius * 1.8;
 
       for (let m = 0; m < moonCount; m++) {
-        const moonOrbitRadius = lastMoonOrbit + 16 + Math.random() * 12;
-        lastMoonOrbit = moonOrbitRadius;
+        const moonOrbitX = lastMoonDist + 12 + Math.random() * 16;
+        const moonOrbitY = moonOrbitX * (0.5 + Math.random() * 0.4); // Semi-random elliptical aspect ratio
+        lastMoonDist = moonOrbitX + moonOrbitX * 0.3;
 
         moons.push({
           id: m + 1,
-          orbitRadius: moonOrbitRadius,
+          orbitRadiusX: moonOrbitX,
+          orbitRadiusY: moonOrbitY,
+          orbitRotation: Math.random() * Math.PI * 2,
           angle: Math.random() * Math.PI * 2,
           speed: (0.005 + Math.random() * 0.01) * (Math.random() < 0.5 ? 1 : -1),
           radius: 4.5 + Math.random() * 2.5,
@@ -106,8 +106,13 @@ export class ParticlePlanets {
 
       for (const moon of planet.moons) {
         moon.angle += moon.speed * speedMultiplier;
-        moon.x = planet.x + Math.cos(moon.angle) * moon.orbitRadius;
-        moon.y = planet.y + Math.sin(moon.angle) * moon.orbitRadius;
+        const moonCosRot = Math.cos(moon.orbitRotation);
+        const moonSinRot = Math.sin(moon.orbitRotation);
+        const mcx = Math.cos(moon.angle) * moon.orbitRadiusX;
+        const mcy = Math.sin(moon.angle) * moon.orbitRadiusY;
+
+        moon.x = planet.x + (mcx * moonCosRot - mcy * moonSinRot);
+        moon.y = planet.y + (mcx * moonSinRot + mcy * moonCosRot);
       }
     }
   }

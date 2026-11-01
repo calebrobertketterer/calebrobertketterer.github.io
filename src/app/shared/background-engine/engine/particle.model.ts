@@ -1,4 +1,4 @@
-// TypeScript interfaces defining individual particle properties, planet structures, and background engine configuration.
+// TypeScript interfaces defining individual particle properties, planet structures, moons, and engine configurations.
 export interface Particle {
   id: number;
   x: number;
@@ -29,7 +29,9 @@ export interface Particle {
 
 export interface Moon {
   id: number;
-  orbitRadius: number;
+  orbitRadiusX: number;
+  orbitRadiusY: number;
+  orbitRotation: number;
   angle: number;
   speed: number;
   radius: number;

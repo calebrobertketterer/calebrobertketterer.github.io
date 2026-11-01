@@ -1,4 +1,4 @@
-// Physics engine class handling multi-planet gravitational competition, explosion lockouts, core collection, and smooth click explosions.
+// Physics engine class optimized for 1000+ particles with squared math, multi-planet competition, and reverted original click explosion pacing.
 import { EngineConfig, Particle, Planet } from './particle.model';
 
 export class ParticlePhysics {
@@ -23,7 +23,9 @@ export class ParticlePhysics {
     const now = Date.now();
     const effectiveSpeedDiv = Math.max(1, speedMultiplier);
 
-    for (const p of particles) {
+    for (let i = 0, len = particles.length; i < len; i++) {
+      const p = particles[i];
+
       p.orbitalAngle += p.orbitalSpeed * 0.01 * speedMultiplier;
 
       if (p.interactionCooldown && p.interactionCooldown > 0) {
@@ -35,13 +37,15 @@ export class ParticlePhysics {
 
       const dxTarget = targetX - p.x;
       const dyTarget = targetY - p.y;
-      const distTarget = Math.sqrt(dxTarget * dxTarget + dyTarget * dyTarget);
+      const distTargetSq = dxTarget * dxTarget + dyTarget * dyTarget;
 
-      if (isMouseActive && distTarget < config.mouseGravityRadius && distTarget > 10) {
+      if (isMouseActive && distTargetSq < config.mouseGravityRadius * config.mouseGravityRadius && distTargetSq > 100) {
+        const distTarget = Math.sqrt(distTargetSq);
         const pull = ((config.mouseGravityRadius - distTarget) / config.mouseGravityRadius) * 0.15;
         p.vx += (dxTarget / distTarget) * pull;
         p.vy += (dyTarget / distTarget) * pull;
-      } else if (distTarget < 400) {
+      } else if (distTargetSq < 160000) {
+        const distTarget = Math.sqrt(distTargetSq);
         const perpX = -dyTarget / distTarget;
         const perpY = dxTarget / distTarget;
         p.vx += perpX * 0.01 * p.orbitalSpeed;
@@ -49,14 +53,15 @@ export class ParticlePhysics {
       }
 
       let closestPlanet: Planet | null = null;
-      let minPlanetDist = Infinity;
+      let minPlanetDistSq = Infinity;
 
-      for (const planet of planets) {
+      for (let j = 0, pLen = planets.length; j < pLen; j++) {
+        const planet = planets[j];
         const dx = planet.x - p.x;
         const dy = planet.y - p.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < minPlanetDist) {
-          minPlanetDist = dist;
+        const distSq = dx * dx + dy * dy;
+        if (distSq < minPlanetDistSq) {
+          minPlanetDistSq = distSq;
           closestPlanet = planet;
         }
       }
@@ -66,15 +71,17 @@ export class ParticlePhysics {
       if (closestPlanet && (!p.interactionCooldown || p.interactionCooldown <= 0)) {
         const dxPlanet = closestPlanet.x - p.x;
         const dyPlanet = closestPlanet.y - p.y;
-        const distPlanet = minPlanetDist;
+        const distPlanetSq = minPlanetDistSq;
         
         const enterRadius = closestPlanet.radius * 4.5;
         const exitRadius = closestPlanet.radius * 5.8;
 
         const isCurrentlyInside = p.activePlanetInteraction && p.activePlanetInteraction.planetId === closestPlanet.id;
+        const thresholdSq = isCurrentlyInside ? exitRadius * exitRadius : enterRadius * enterRadius;
 
-        if (distPlanet < (isCurrentlyInside ? exitRadius : enterRadius)) {
+        if (distPlanetSq < thresholdSq) {
           inAnyPlanetZone = true;
+          const distPlanet = Math.sqrt(distPlanetSq) || 1;
 
           if (!isCurrentlyInside) {
             const rand = Math.random();
@@ -84,6 +91,7 @@ export class ParticlePhysics {
           }
 
           const behavior = p.activePlanetInteraction!.behavior;
+          const pullFactor = (enterRadius - distPlanet) / enterRadius;
           const perpX = -dyPlanet / distPlanet;
           const perpY = dxPlanet / distPlanet;
 
@@ -94,7 +102,7 @@ export class ParticlePhysics {
               p.vx = -nx * (4.0 + Math.random() * 2.0) / effectiveSpeedDiv;
               p.vy = -ny * (4.0 + Math.random() * 2.0) / effectiveSpeedDiv;
               p.activePlanetInteraction = undefined;
-              p.interactionCooldown = 40; // Prevent immediate re-capture
+              p.interactionCooldown = 40;
             } else {
               p.vx += ((dxPlanet / distPlanet) * 0.08) / effectiveSpeedDiv;
               p.vy += ((dyPlanet / distPlanet) * 0.08) / effectiveSpeedDiv;
@@ -110,14 +118,17 @@ export class ParticlePhysics {
       }
 
       // Moons gravity check
-      for (const planet of planets) {
-        for (const moon of planet.moons) {
+      for (let j = 0, pLen = planets.length; j < pLen; j++) {
+        const planet = planets[j];
+        for (let m = 0, mLen = planet.moons.length; m < mLen; m++) {
+          const moon = planet.moons[m];
           const dxMoon = moon.x - p.x;
           const dyMoon = moon.y - p.y;
-          const distMoon = Math.sqrt(dxMoon * dxMoon + dyMoon * dyMoon);
+          const distMoonSq = dxMoon * dxMoon + dyMoon * dyMoon;
           const moonGravityRadius = moon.radius * 4;
 
-          if (distMoon < moonGravityRadius && distMoon > moon.radius) {
+          if (distMoonSq < moonGravityRadius * moonGravityRadius && distMoonSq > moon.radius * moon.radius) {
+            const distMoon = Math.sqrt(distMoonSq) || 1;
             const moonPull = ((moonGravityRadius - distMoon) / moonGravityRadius) * 0.03;
             p.vx += ((dxMoon / distMoon) * moonPull) / effectiveSpeedDiv;
             p.vy += ((dyMoon / distMoon) * moonPull) / effectiveSpeedDiv;
@@ -125,17 +136,26 @@ export class ParticlePhysics {
         }
       }
 
-      // Planet Explosion Logic with post-explosion re-entry lockout
-      for (const planet of planets) {
+      // Zero-allocation explosion checks
+      for (let j = 0, pLen = planets.length; j < pLen; j++) {
+        const planet = planets[j];
         const realTimeElapsed = (now - planet.lastExplosionTime) * speedMultiplier;
         
         if (realTimeElapsed >= planet.cooldownMs) {
-          const particlesInsidePlanet = particles.filter(
-            targetP => targetP.activePlanetInteraction?.planetId === planet.id &&
-            Math.sqrt((targetP.x - planet.x) ** 2 + (targetP.y - planet.y) ** 2) < planet.radius * 0.95
-          );
+          let insideCount = 0;
+          const coreRadiusSq = (planet.radius * 0.95) ** 2;
 
-          if (particlesInsidePlanet.length >= planet.particleThreshold) {
+          for (let k = 0; k < len; k++) {
+            const targetP = particles[k];
+            if (targetP.activePlanetInteraction?.planetId === planet.id) {
+              const dSq = (targetP.x - planet.x) ** 2 + (targetP.y - planet.y) ** 2;
+              if (dSq < coreRadiusSq) {
+                insideCount++;
+              }
+            }
+          }
+
+          if (insideCount >= planet.particleThreshold) {
             if (!planet.isExplosionDelayed) {
               planet.isExplosionDelayed = true;
               planet.explosionDelayTimer = now + (400 + Math.random() * 800);
@@ -145,17 +165,23 @@ export class ParticlePhysics {
               planet.particleThreshold = Math.floor(10 + Math.random() * 6);
               planet.isExplosionDelayed = false;
 
-              for (const targetP of particlesInsidePlanet) {
-                targetP.isBlinking = true;
-                targetP.blinkDuration = 30;
-                const pDx = targetP.x - planet.x;
-                const pDy = targetP.y - planet.y;
-                const pDist = Math.sqrt(pDx * pDx + pDy * pDy) || 1;
-                const blastForce = (6.0 + Math.random() * 4.0) / effectiveSpeedDiv;
-                targetP.vx += (pDx / pDist) * blastForce;
-                targetP.vy += (pDy / pDist) * blastForce;
-                targetP.activePlanetInteraction = undefined;
-                targetP.interactionCooldown = 60; // Force particles to travel outward into open space before being eligible for re-capture
+              for (let k = 0; k < len; k++) {
+                const targetP = particles[k];
+                if (targetP.activePlanetInteraction?.planetId === planet.id) {
+                  const dSq = (targetP.x - planet.x) ** 2 + (targetP.y - planet.y) ** 2;
+                  if (dSq < coreRadiusSq) {
+                    targetP.isBlinking = true;
+                    targetP.blinkDuration = 30;
+                    const pDx = targetP.x - planet.x;
+                    const pDy = targetP.y - planet.y;
+                    const pDist = Math.sqrt(pDx * pDx + pDy * pDy) || 1;
+                    const blastForce = (6.0 + Math.random() * 4.0) / effectiveSpeedDiv;
+                    targetP.vx += (pDx / pDist) * blastForce;
+                    targetP.vy += (pDy / pDist) * blastForce;
+                    targetP.activePlanetInteraction = undefined;
+                    targetP.interactionCooldown = 60;
+                  }
+                }
               }
             }
           }
@@ -167,8 +193,8 @@ export class ParticlePhysics {
         if (activePlanet) {
           const dx = activePlanet.x - p.x;
           const dy = activePlanet.y - p.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist > activePlanet.radius * 5.8) {
+          const distSq = dx * dx + dy * dy;
+          if (distSq > (activePlanet.radius * 5.8) ** 2) {
             p.activePlanetInteraction = undefined;
           }
         } else {
@@ -177,12 +203,14 @@ export class ParticlePhysics {
       }
 
       if (p.clusterId !== undefined) {
-        for (const other of particles) {
+        for (let k = 0; k < len; k++) {
+          const other = particles[k];
           if (other.clusterId === p.clusterId && other.id !== p.id) {
             const cdx = other.x - p.x;
             const cdy = other.y - p.y;
-            const cdist = Math.sqrt(cdx * cdx + cdy * cdy);
-            if (cdist < 150 && cdist > 20) {
+            const cdistSq = cdx * cdx + cdy * cdy;
+            if (cdistSq < 22500 && cdistSq > 400) {
+              const cdist = Math.sqrt(cdistSq);
               p.vx += (cdx / cdist) * 0.01 / effectiveSpeedDiv;
               p.vy += (cdy / cdist) * 0.01 / effectiveSpeedDiv;
             }
@@ -213,18 +241,22 @@ export class ParticlePhysics {
     speedMultiplier: number = 1.0
   ): void {
     const blastRadius = 200 * intensity;
+    const blastRadiusSq = blastRadius * blastRadius;
     const effectiveSpeedDiv = Math.max(1, speedMultiplier);
 
-    for (const p of particles) {
+    for (let i = 0, len = particles.length; i < len; i++) {
+      const p = particles[i];
       const dx = p.x - chargeX;
       const dy = p.y - chargeY;
-      const dist = Math.sqrt(dx * dx + dy * dy);
+      const distSq = dx * dx + dy * dy;
 
-      if (dist < blastRadius || p.activePlanetInteraction) {
+      if (distSq < blastRadiusSq || p.activePlanetInteraction) {
         p.isBlinking = true;
         p.blinkDuration = Math.floor(20 * intensity);
         
-        const effectiveDist = dist < blastRadius ? dist : blastRadius * 0.5;
+        const dist = Math.sqrt(distSq);
+        const effectiveDist = distSq < blastRadiusSq ? dist : blastRadius * 0.5;
+        // Reverted to original smooth, powerful ripple pacing
         const force = ((blastRadius - effectiveDist) / blastRadius) * this.clickExplosionPower * intensity / effectiveSpeedDiv;
         
         const angle = Math.atan2(dy, dx);
