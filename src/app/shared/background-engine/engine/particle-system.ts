@@ -17,6 +17,7 @@ export class ParticleSystem {
   private width = 0;
   private height = 0;
   private isPaused = false;
+  private isWindowHidden = false; // Tracks tab visibility
   private speedMultiplier = 1.0;
 
   private mouseX = -9999;
@@ -46,6 +47,22 @@ export class ParticleSystem {
     mouseGravityRadius: 220
   };
 
+  private handleVisibilityChange = (): void => {
+    if (typeof document !== 'undefined') {
+      this.isWindowHidden = document.hidden;
+      if (this.isWindowHidden) {
+        // Automatically halt frame requests when tab is hidden to save energy
+        if (this.animationFrameId !== null) {
+          cancelAnimationFrame(this.animationFrameId);
+          this.animationFrameId = null;
+        }
+      } else if (!this.isPaused) {
+        // Resume loop when tab becomes visible again
+        this.startLoop();
+      }
+    }
+  };
+
   public init(canvas: HTMLCanvasElement): void {
     this.canvas = canvas;
     const context = canvas.getContext('2d');
@@ -59,6 +76,10 @@ export class ParticleSystem {
       this.spawnParticle();
     }
 
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', this.handleVisibilityChange);
+    }
+
     this.startLoop();
   }
 
@@ -68,8 +89,6 @@ export class ParticleSystem {
     const newWidth = window.innerWidth;
     const newHeight = window.innerHeight;
 
-    // Ignore mobile address bar collapses / overscroll height changes
-    // unless forced on init or horizontal width actually changes (orientation change)
     const widthChanged = Math.abs(newWidth - this.width) > 1;
 
     if (!force && !widthChanged && this.width > 0 && this.height > 0) {
@@ -176,7 +195,7 @@ export class ParticleSystem {
 
   public togglePlay(): boolean {
     this.isPaused = !this.isPaused;
-    if (!this.isPaused) {
+    if (!this.isPaused && !this.isWindowHidden) {
       this.startLoop();
     } else if (this.animationFrameId !== null) {
       cancelAnimationFrame(this.animationFrameId);
@@ -190,7 +209,7 @@ export class ParticleSystem {
   }
 
   private startLoop = (): void => {
-    if (this.isPaused) return;
+    if (this.isPaused || this.isWindowHidden) return;
 
     this.update();
     this.draw();
@@ -251,6 +270,9 @@ export class ParticleSystem {
   }
 
   public destroy(): void {
+    if (typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', this.handleVisibilityChange);
+    }
     if (this.animationFrameId !== null) {
       cancelAnimationFrame(this.animationFrameId);
       this.animationFrameId = null;
