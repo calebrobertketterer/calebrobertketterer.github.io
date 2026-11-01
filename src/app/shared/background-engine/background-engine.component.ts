@@ -161,7 +161,6 @@ export class BackgroundEngineComponent implements OnInit, OnDestroy {
     if (this.isInteractionDisabled()) {
       return;
     }
-    this.engine.releaseChargeExplosion();
     this.engine.clearMousePosition();
   }
 

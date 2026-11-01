@@ -17,7 +17,7 @@ export class ParticleSystem {
   private width = 0;
   private height = 0;
   private isPaused = false;
-  private isWindowHidden = false; // Tracks tab visibility
+  private isWindowHidden = false;
   private speedMultiplier = 1.0;
 
   private mouseX = -9999;
@@ -51,13 +51,11 @@ export class ParticleSystem {
     if (typeof document !== 'undefined') {
       this.isWindowHidden = document.hidden;
       if (this.isWindowHidden) {
-        // Automatically halt frame requests when tab is hidden to save energy
         if (this.animationFrameId !== null) {
           cancelAnimationFrame(this.animationFrameId);
           this.animationFrameId = null;
         }
       } else if (!this.isPaused) {
-        // Resume loop when tab becomes visible again
         this.startLoop();
       }
     }
@@ -86,17 +84,19 @@ export class ParticleSystem {
   public resize(force = false): void {
     if (!this.canvas) return;
 
-    const newWidth = window.innerWidth;
-    const newHeight = window.innerHeight;
+    const rect = this.canvas.getBoundingClientRect();
+    const displayWidth = rect.width ? Math.round(rect.width) : window.innerWidth;
+    const displayHeight = rect.height ? Math.round(rect.height) : window.innerHeight;
 
-    const widthChanged = Math.abs(newWidth - this.width) > 1;
+    const widthChanged = Math.abs(displayWidth - this.width) > 1;
+    const heightChanged = Math.abs(displayHeight - this.height) > 1;
 
-    if (!force && !widthChanged && this.width > 0 && this.height > 0) {
+    if (!force && !widthChanged && !heightChanged && this.width > 0 && this.height > 0) {
       return;
     }
 
-    this.width = newWidth;
-    this.height = newHeight;
+    this.width = displayWidth;
+    this.height = displayHeight;
     this.canvas.width = this.width;
     this.canvas.height = this.height;
   }
