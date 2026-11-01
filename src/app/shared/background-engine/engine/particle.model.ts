@@ -19,6 +19,7 @@ export interface Particle {
   orbitalSpeed: number;
   createdAt: number;
   lifespan: number;
+  stuckStartTime?: number;
 }
 
 export interface Moon {

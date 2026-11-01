@@ -1,4 +1,4 @@
-// Physics engine class handling particle movement, orbital velocities, mouse gravity attraction, planet/moon gravity, and explosions.
+// Physics engine class handling particle movement, orbital tangential deflection, stuck-particle cleanup, and explosions.
 import { EngineConfig, Particle, Planet } from './particle.model';
 
 export class ParticlePhysics {
@@ -15,6 +15,7 @@ export class ParticlePhysics {
   ): void {
     const centerX = width / 2;
     const centerY = height / 2;
+    const now = Date.now();
 
     for (const p of particles) {
       p.orbitalAngle += p.orbitalSpeed * 0.01 * speedMultiplier;
@@ -26,7 +27,6 @@ export class ParticlePhysics {
       const dyTarget = targetY - p.y;
       const distTarget = Math.sqrt(dxTarget * dxTarget + dyTarget * dyTarget);
 
-      // Apply base accelerations without double-scaling
       if (isMouseActive && distTarget < config.mouseGravityRadius && distTarget > 10) {
         const pull = ((config.mouseGravityRadius - distTarget) / config.mouseGravityRadius) * 0.15;
         p.vx += (dxTarget / distTarget) * pull;
@@ -38,33 +38,67 @@ export class ParticlePhysics {
         p.vy += perpY * 0.02 * p.orbitalSpeed;
       }
 
-      // Apply unidirectional gravitational pull from planets AND their moons
+      let isStuck = false;
+
+      // Gravitational slingshot and orbital deflection around planets
       for (const planet of planets) {
-        // Planet gravity well
         const dxPlanet = planet.x - p.x;
         const dyPlanet = planet.y - p.y;
         const distPlanet = Math.sqrt(dxPlanet * dxPlanet + dyPlanet * dyPlanet);
-        const gravityRadius = planet.radius * 7;
+        const gravityRadius = planet.radius * 5.5;
 
-        if (distPlanet < gravityRadius && distPlanet > planet.radius) {
-          const pullStrength = ((gravityRadius - distPlanet) / gravityRadius) * (planet.mass * 0.007);
-          p.vx += (dxPlanet / distPlanet) * pullStrength;
-          p.vy += (dyPlanet / distPlanet) * pullStrength;
+        if (distPlanet < gravityRadius) {
+          if (distPlanet < planet.radius + 4) {
+            // Hard exclusion boundary: push particle out so it never clumps inside the node
+            const pushAngle = Math.atan2(-dyPlanet, -dxPlanet);
+            p.vx += Math.cos(pushAngle) * 0.8;
+            p.vy += Math.sin(pushAngle) * 0.8;
+            isStuck = true;
+          } else {
+            // Tangential orbital slingshot force (orbits instead of clumping)
+            const pullFactor = (gravityRadius - distPlanet) / gravityRadius;
+            const perpX = -dyPlanet / distPlanet;
+            const perpY = dxPlanet / distPlanet;
+
+            // Blend inward pull with strong orbital tangential velocity
+            p.vx += (dxPlanet / distPlanet) * (pullFactor * 0.03) + perpX * 0.08 * speedMultiplier;
+            p.vy += (dyPlanet / distPlanet) * (pullFactor * 0.03) + perpY * 0.08 * speedMultiplier;
+
+            // Check if particle velocity has stalled (stuck near planet center)
+            const currentSpeed = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+            if (currentSpeed < 0.2) {
+              isStuck = true;
+            }
+          }
         }
 
-        // Moon gravity wells (unaffected by particles)
+        // Moons gravity check
         for (const moon of planet.moons) {
           const dxMoon = moon.x - p.x;
           const dyMoon = moon.y - p.y;
           const distMoon = Math.sqrt(dxMoon * dxMoon + dyMoon * dyMoon);
-          const moonGravityRadius = moon.radius * 6;
+          const moonGravityRadius = moon.radius * 5;
 
           if (distMoon < moonGravityRadius && distMoon > moon.radius) {
-            const moonPull = ((moonGravityRadius - distMoon) / moonGravityRadius) * 0.04;
-            p.vx += (dxMoon / distMoon) * moonPull;
-            p.vy += (dyMoon / distMoon) * moonPull;
+            const moonPull = ((moonGravityRadius - distMoon) / moonGravityRadius) * 0.03;
+            const perpX = -dyMoon / distMoon;
+            const perpY = dxMoon / distMoon;
+            p.vx += (dxMoon / distMoon) * moonPull + perpX * 0.05;
+            p.vy += (dyMoon / distMoon) * moonPull + perpY * 0.05;
           }
         }
+      }
+
+      // If a particle gets stuck or trapped near a planet for too long, initiate graceful fade out
+      if (isStuck) {
+        if (!p.stuckStartTime) {
+          p.stuckStartTime = now;
+        } else if (now - p.stuckStartTime > 1000 && p.fadeState !== 'out') {
+          p.fadeState = 'out';
+          p.fadeSpeed = 0.04;
+        }
+      } else {
+        p.stuckStartTime = undefined;
       }
 
       if (p.clusterId !== undefined) {
@@ -118,6 +152,7 @@ export class ParticlePhysics {
         const angle = Math.atan2(dy, dx);
         p.vx += Math.cos(angle) * force;
         p.vy += Math.sin(angle) * force;
+        p.stuckStartTime = undefined; // Reset stuck timer on explosion blast
       }
     }
   }

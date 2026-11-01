@@ -1,4 +1,4 @@
-// Planet manager handling prominent elliptical orbits, collision-free spacing, and orbiting moons.
+// Planet manager handling prominent elliptical orbits, collision-free spacing, and larger, slower orbiting moons.
 import { Planet, Moon } from './particle.model';
 
 export class ParticlePlanets {
@@ -20,26 +20,26 @@ export class ParticlePlanets {
     for (let i = 0; i < count; i++) {
       const baseDistance = minOrbit + i * bandStep + bandStep * 0.5;
       const orbitRadiusX = baseDistance + (Math.random() - 0.5) * (bandStep * 0.3);
-      // Strikingly pronounced elliptical oval ratio (0.4 to 0.7)
       const orbitRadiusY = orbitRadiusX * (0.4 + Math.random() * 0.3);
 
-      const radius = 20 + Math.random() * 20; // Large planet nodes
+      const radius = 22 + Math.random() * 18; // Large planet nodes
       const mass = radius * 1.8;
 
-      const moonCount = Math.floor(Math.random() * 3) + 1;
+      const moonCount = Math.floor(Math.random() * 2) + 1;
       const moons: Moon[] = [];
-      let lastMoonOrbit = radius * 1.7;
+      let lastMoonOrbit = radius * 1.8;
 
       for (let m = 0; m < moonCount; m++) {
-        const moonOrbitRadius = lastMoonOrbit + 14 + Math.random() * 10;
+        const moonOrbitRadius = lastMoonOrbit + 16 + Math.random() * 12;
         lastMoonOrbit = moonOrbitRadius;
 
         moons.push({
           id: m + 1,
           orbitRadius: moonOrbitRadius,
           angle: Math.random() * Math.PI * 2,
-          speed: (0.015 + Math.random() * 0.02) * (Math.random() < 0.5 ? 1 : -1),
-          radius: 3.5 + Math.random() * 2.5,
+          // Slower, more majestic moon speeds
+          speed: (0.005 + Math.random() * 0.01) * (Math.random() < 0.5 ? 1 : -1),
+          radius: 4.5 + Math.random() * 2.5, // Slightly larger moons
           x: 0,
           y: 0
         });
@@ -50,7 +50,7 @@ export class ParticlePlanets {
         orbitRadiusX,
         orbitRadiusY,
         angle: Math.random() * Math.PI * 2,
-        speed: (0.0015 + Math.random() * 0.0025) * (Math.random() < 0.5 ? 1 : -1),
+        speed: (0.001 + Math.random() * 0.002) * (Math.random() < 0.5 ? 1 : -1),
         radius,
         mass,
         color: this.colorPalette[Math.floor(Math.random() * this.colorPalette.length)],

@@ -1,4 +1,4 @@
-// Renderer class handling canvas drawing for backgrounds, grid lines, oval orbit paths, clean tactical nodes, moons, and depth-layered particles.
+// Renderer class handling canvas drawing for backgrounds, grid lines, oval paths, clean tactical nodes, moons, and depth-layered particles.
 import { Particle, Planet } from './particle.model';
 
 export class ParticleRenderer {
@@ -74,7 +74,7 @@ export class ParticleRenderer {
       ctx.arc(0, 0, planet.radius * 2.2, 0, Math.PI * 2);
       ctx.fill();
 
-      // Clean flat tactical node body (No glossy white highlights)
+      // Clean flat tactical node body
       const fillGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, planet.radius);
       fillGrad.addColorStop(0, `rgba(15, 25, 40, 0.95)`);
       fillGrad.addColorStop(1, `rgba(8, 12, 20, 0.98)`);
@@ -102,7 +102,7 @@ export class ParticleRenderer {
 
       ctx.restore();
 
-      // Moons (rendered without outline rings)
+      // Moons
       for (const moon of planet.moons) {
         ctx.shadowBlur = 4;
         ctx.shadowColor = `rgba(${planet.color}, 0.7)`;
@@ -116,7 +116,6 @@ export class ParticleRenderer {
   }
 
   public drawBackgroundParticles(ctx: CanvasRenderingContext2D, particles: Particle[]): void {
-    // Draws particles behind planets (z < 3)
     for (const p of particles) {
       if (p.z >= 3) continue;
       this.renderSingleParticle(ctx, p);
@@ -124,7 +123,6 @@ export class ParticleRenderer {
   }
 
   public drawForegroundParticles(ctx: CanvasRenderingContext2D, particles: Particle[]): void {
-    // Draws glowing foreground particles in front of planets (z === 3)
     for (const p of particles) {
       if (p.z < 3) continue;
       this.renderSingleParticle(ctx, p);
