@@ -1,5 +1,5 @@
-// Renderer class handling HTML5 canvas drawing for background gradients, grid lines, debug overlays, and particles.
-import { EngineConfig, Particle } from './particle.model';
+// Renderer class handling canvas drawing for backgrounds, grid lines, oval orbit paths, clean tactical nodes, moons, and depth-layered particles.
+import { Particle, Planet } from './particle.model';
 
 export class ParticleRenderer {
   public drawBackground(
@@ -47,6 +47,114 @@ export class ParticleRenderer {
     ctx.fillRect(20, 40, 16, 16);
   }
 
+  public drawOrbitPaths(ctx: CanvasRenderingContext2D, planets: Planet[], width: number, height: number): void {
+    const centerX = width / 2;
+    const centerY = height / 2;
+
+    ctx.lineWidth = 1;
+    for (const planet of planets) {
+      ctx.strokeStyle = `rgba(${planet.color}, 0.08)`;
+      ctx.beginPath();
+      ctx.ellipse(centerX, centerY, planet.orbitRadiusX, planet.orbitRadiusY, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+
+  public drawPlanets(ctx: CanvasRenderingContext2D, planets: Planet[]): void {
+    for (const planet of planets) {
+      ctx.save();
+      ctx.translate(planet.x, planet.y);
+
+      // Soft ambient atmospheric bloom
+      const bloomGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, planet.radius * 2.2);
+      bloomGrad.addColorStop(0, `rgba(${planet.color}, 0.2)`);
+      bloomGrad.addColorStop(1, `rgba(${planet.color}, 0)`);
+      ctx.fillStyle = bloomGrad;
+      ctx.beginPath();
+      ctx.arc(0, 0, planet.radius * 2.2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Clean flat tactical node body (No glossy white highlights)
+      const fillGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, planet.radius);
+      fillGrad.addColorStop(0, `rgba(15, 25, 40, 0.95)`);
+      fillGrad.addColorStop(1, `rgba(8, 12, 20, 0.98)`);
+
+      ctx.shadowBlur = 8;
+      ctx.shadowColor = `rgba(${planet.color}, 0.5)`;
+      ctx.fillStyle = fillGrad;
+      ctx.strokeStyle = `rgba(${planet.color}, 0.8)`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(0, 0, planet.radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // Subtle tactical crosshair inside the node
+      ctx.strokeStyle = `rgba(${planet.color}, 0.4)`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(-planet.radius * 0.4, 0);
+      ctx.lineTo(planet.radius * 0.4, 0);
+      ctx.moveTo(0, -planet.radius * 0.4);
+      ctx.lineTo(0, planet.radius * 0.4);
+      ctx.stroke();
+
+      ctx.restore();
+
+      // Moons (rendered without outline rings)
+      for (const moon of planet.moons) {
+        ctx.shadowBlur = 4;
+        ctx.shadowColor = `rgba(${planet.color}, 0.7)`;
+        ctx.fillStyle = `rgba(${planet.color}, 0.9)`;
+        ctx.beginPath();
+        ctx.arc(moon.x, moon.y, moon.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+    }
+  }
+
+  public drawBackgroundParticles(ctx: CanvasRenderingContext2D, particles: Particle[]): void {
+    // Draws particles behind planets (z < 3)
+    for (const p of particles) {
+      if (p.z >= 3) continue;
+      this.renderSingleParticle(ctx, p);
+    }
+  }
+
+  public drawForegroundParticles(ctx: CanvasRenderingContext2D, particles: Particle[]): void {
+    // Draws glowing foreground particles in front of planets (z === 3)
+    for (const p of particles) {
+      if (p.z < 3) continue;
+      this.renderSingleParticle(ctx, p);
+    }
+  }
+
+  private renderSingleParticle(ctx: CanvasRenderingContext2D, p: Particle): void {
+    const renderAlpha = p.isBlinking
+      ? Math.min(1, p.alpha * 2.5)
+      : Math.max(0, p.alpha);
+
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+
+    if (p.z === 3) {
+      const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.radius * 2);
+      grad.addColorStop(0, `rgba(${p.color}, ${renderAlpha})`);
+      grad.addColorStop(1, `rgba(${p.color}, 0)`);
+      ctx.fillStyle = grad;
+      ctx.shadowBlur = 8;
+      ctx.shadowColor = `rgba(${p.color}, 0.8)`;
+    } else {
+      ctx.fillStyle = `rgba(${p.color}, ${renderAlpha})`;
+      ctx.shadowBlur = 0;
+    }
+
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+
   public drawChargeAura(
     ctx: CanvasRenderingContext2D,
     chargeX: number,
@@ -75,31 +183,5 @@ export class ParticleRenderer {
     ctx.beginPath();
     ctx.arc(rippleX, rippleY, rippleRadius, 0, Math.PI * 2);
     ctx.stroke();
-  }
-
-  public drawParticles(ctx: CanvasRenderingContext2D, particles: Particle[]): void {
-    for (const p of particles) {
-      const renderAlpha = p.isBlinking
-        ? Math.min(1, p.alpha * 2.5)
-        : Math.max(0, p.alpha);
-
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-
-      if (p.z === 3) {
-        const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.radius * 2);
-        grad.addColorStop(0, `rgba(${p.color}, ${renderAlpha})`);
-        grad.addColorStop(1, `rgba(${p.color}, 0)`);
-        ctx.fillStyle = grad;
-        ctx.shadowBlur = 8;
-        ctx.shadowColor = `rgba(${p.color}, 0.8)`;
-      } else {
-        ctx.fillStyle = `rgba(${p.color}, ${renderAlpha})`;
-        ctx.shadowBlur = 0;
-      }
-
-      ctx.fill();
-    }
-    ctx.shadowBlur = 0;
   }
 }

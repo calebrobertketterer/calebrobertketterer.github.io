@@ -1,18 +1,21 @@
 // Core particle system manager coordinating animation loops, mouse interactions, physics, rendering, and lifecycle updates.
-import { EngineConfig, Particle } from './particle.model';
+import { EngineConfig, Particle, Planet } from './particle.model';
 import { ParticleSpawner } from './particle-spawner';
 import { ParticlePhysics } from './particle-physics';
 import { ParticleRenderer } from './particle-renderer';
+import { ParticlePlanets } from './particle-planets';
 
 export class ParticleSystem {
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;
   private animationFrameId: number | null = null;
   private particles: Particle[] = [];
+  private planets: Planet[] = [];
 
   private spawner = new ParticleSpawner();
   private physics = new ParticlePhysics();
   private renderer = new ParticleRenderer();
+  private planetManager = new ParticlePlanets();
 
   private width = 0;
   private height = 0;
@@ -44,7 +47,8 @@ export class ParticleSystem {
     maxLifespanMs: 60000,
     baseSpeed: 0.6,
     gridSize: 60,
-    mouseGravityRadius: 220
+    mouseGravityRadius: 220,
+    planetCount: 3
   };
 
   private handleVisibilityChange = (): void => {
@@ -99,6 +103,8 @@ export class ParticleSystem {
     this.height = displayHeight;
     this.canvas.width = this.width;
     this.canvas.height = this.height;
+
+    this.planets = this.planetManager.generatePlanets(this.config.planetCount, this.width, this.height);
   }
 
   public getActiveParticleCount(): number {
@@ -234,10 +240,12 @@ export class ParticleSystem {
       }
     }
 
+    this.planetManager.updatePlanets(this.planets, this.width, this.height, this.speedMultiplier);
     this.spawner.updateLifecycle(this.particles, this.speedMultiplier, this.width, this.height, now);
 
     this.physics.updateParticles(
       this.particles,
+      this.planets,
       this.config,
       this.speedMultiplier,
       this.width,
@@ -257,6 +265,15 @@ export class ParticleSystem {
     this.renderer.drawBackground(this.ctx, this.width, this.height, this.colorCycle);
     this.renderer.drawGrid(this.ctx, this.width, this.height, this.config.gridSize);
     this.renderer.drawDebugOverlay(this.ctx);
+    this.renderer.drawOrbitPaths(this.ctx, this.planets, this.width, this.height);
+
+    // 3D Layering: Background/Midground particles rendered BEHIND planets
+    this.renderer.drawBackgroundParticles(this.ctx, this.particles);
+
+    this.renderer.drawPlanets(this.ctx, this.planets);
+
+    // 3D Layering: Foreground glowing particles rendered IN FRONT OF planets
+    this.renderer.drawForegroundParticles(this.ctx, this.particles);
 
     if (this.isChargeHolding) {
       this.renderer.drawChargeAura(this.ctx, this.chargeX, this.chargeY, this.chargeStartTime);
@@ -265,8 +282,6 @@ export class ParticleSystem {
     if (this.isRippling) {
       this.renderer.drawRipple(this.ctx, this.clickRippleX, this.clickRippleY, this.clickRippleRadius);
     }
-
-    this.renderer.drawParticles(this.ctx, this.particles);
   }
 
   public destroy(): void {

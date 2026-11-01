@@ -1,9 +1,10 @@
-// Physics engine class handling particle movement, orbital velocities, mouse gravity attraction, and explosions.
-import { EngineConfig, Particle } from './particle.model';
+// Physics engine class handling particle movement, orbital velocities, mouse gravity attraction, planet/moon gravity, and explosions.
+import { EngineConfig, Particle, Planet } from './particle.model';
 
 export class ParticlePhysics {
   public updateParticles(
     particles: Particle[],
+    planets: Planet[],
     config: EngineConfig,
     speedMultiplier: number,
     width: number,
@@ -35,6 +36,35 @@ export class ParticlePhysics {
         const perpY = dxTarget / distTarget;
         p.vx += perpX * 0.02 * p.orbitalSpeed;
         p.vy += perpY * 0.02 * p.orbitalSpeed;
+      }
+
+      // Apply unidirectional gravitational pull from planets AND their moons
+      for (const planet of planets) {
+        // Planet gravity well
+        const dxPlanet = planet.x - p.x;
+        const dyPlanet = planet.y - p.y;
+        const distPlanet = Math.sqrt(dxPlanet * dxPlanet + dyPlanet * dyPlanet);
+        const gravityRadius = planet.radius * 7;
+
+        if (distPlanet < gravityRadius && distPlanet > planet.radius) {
+          const pullStrength = ((gravityRadius - distPlanet) / gravityRadius) * (planet.mass * 0.007);
+          p.vx += (dxPlanet / distPlanet) * pullStrength;
+          p.vy += (dyPlanet / distPlanet) * pullStrength;
+        }
+
+        // Moon gravity wells (unaffected by particles)
+        for (const moon of planet.moons) {
+          const dxMoon = moon.x - p.x;
+          const dyMoon = moon.y - p.y;
+          const distMoon = Math.sqrt(dxMoon * dxMoon + dyMoon * dyMoon);
+          const moonGravityRadius = moon.radius * 6;
+
+          if (distMoon < moonGravityRadius && distMoon > moon.radius) {
+            const moonPull = ((moonGravityRadius - distMoon) / moonGravityRadius) * 0.04;
+            p.vx += (dxMoon / distMoon) * moonPull;
+            p.vy += (dyMoon / distMoon) * moonPull;
+          }
+        }
       }
 
       if (p.clusterId !== undefined) {

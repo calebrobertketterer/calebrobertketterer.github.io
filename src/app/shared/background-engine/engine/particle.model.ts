@@ -1,4 +1,4 @@
-// TypeScript interfaces defining individual particle properties and background engine configuration structures.
+// TypeScript interfaces defining individual particle properties, planet structures, and background engine configuration.
 export interface Particle {
   id: number;
   x: number;
@@ -21,6 +21,30 @@ export interface Particle {
   lifespan: number;
 }
 
+export interface Moon {
+  id: number;
+  orbitRadius: number;
+  angle: number;
+  speed: number;
+  radius: number;
+  x: number;
+  y: number;
+}
+
+export interface Planet {
+  id: number;
+  orbitRadiusX: number;
+  orbitRadiusY: number;
+  angle: number;
+  speed: number;
+  radius: number;
+  mass: number;
+  color: string;
+  moons: Moon[];
+  x: number;
+  y: number;
+}
+
 export interface EngineConfig {
   maxParticles: number;
   spawnRateMs: number;
@@ -29,4 +53,5 @@ export interface EngineConfig {
   baseSpeed: number;
   gridSize: number;
   mouseGravityRadius: number;
+  planetCount: number;
 }
