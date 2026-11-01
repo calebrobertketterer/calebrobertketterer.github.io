@@ -1,4 +1,4 @@
-// Core particle system manager coordinating animation loops, mouse interactions, physics, rendering, and lifecycle updates.
+// Core particle system manager coordinating animation loops, mouse interactions, physics, rendering, and independent speed-corrected ripple animations.
 import { EngineConfig, Particle, Planet } from './particle.model';
 import { ParticleSpawner } from './particle-spawner';
 import { ParticlePhysics } from './particle-physics';
@@ -194,7 +194,7 @@ export class ParticleSystem {
     this.clickRippleRadius = 10;
     this.isRippling = true;
 
-    this.physics.applyExplosion(this.particles, this.chargeX, this.chargeY, intensity);
+    this.physics.applyExplosion(this.particles, this.chargeX, this.chargeY, intensity, this.speedMultiplier);
 
     this.isChargeHolding = false;
   }
@@ -234,7 +234,7 @@ export class ParticleSystem {
     }
 
     if (this.isRippling) {
-      this.clickRippleRadius += 10 * this.speedMultiplier;
+      this.clickRippleRadius += (10 / Math.max(1, this.speedMultiplier)) * this.speedMultiplier;
       if (this.clickRippleRadius > 400) {
         this.isRippling = false;
       }
@@ -267,12 +267,8 @@ export class ParticleSystem {
     this.renderer.drawDebugOverlay(this.ctx);
     this.renderer.drawOrbitPaths(this.ctx, this.planets, this.width, this.height);
 
-    // 3D Layering: Background/Midground particles rendered BEHIND planets
     this.renderer.drawBackgroundParticles(this.ctx, this.particles);
-
     this.renderer.drawPlanets(this.ctx, this.planets);
-
-    // 3D Layering: Foreground glowing particles rendered IN FRONT OF planets
     this.renderer.drawForegroundParticles(this.ctx, this.particles);
 
     if (this.isChargeHolding) {

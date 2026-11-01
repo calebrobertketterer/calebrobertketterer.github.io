@@ -20,6 +20,11 @@ export interface Particle {
   createdAt: number;
   lifespan: number;
   stuckStartTime?: number;
+  interactionCooldown?: number;
+  activePlanetInteraction?: {
+    planetId: number;
+    behavior: 'bounce' | 'behind' | 'over' | 'tangential';
+  };
 }
 
 export interface Moon {
@@ -36,6 +41,7 @@ export interface Planet {
   id: number;
   orbitRadiusX: number;
   orbitRadiusY: number;
+  orbitRotation: number;
   angle: number;
   speed: number;
   radius: number;
@@ -44,6 +50,11 @@ export interface Planet {
   moons: Moon[];
   x: number;
   y: number;
+  lastExplosionTime: number;
+  cooldownMs: number;
+  particleThreshold: number;
+  isExplosionDelayed: boolean;
+  explosionDelayTimer: number;
 }
 
 export interface EngineConfig {

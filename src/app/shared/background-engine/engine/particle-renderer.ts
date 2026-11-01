@@ -1,4 +1,4 @@
-// Renderer class handling canvas drawing for backgrounds, grid lines, oval paths, clean tactical nodes, moons, and depth-layered particles.
+// Renderer class handling canvas drawing for backgrounds, grid lines, arbitrarily rotated orbit paths, tactical nodes, moons, and depth-layered particles.
 import { Particle, Planet } from './particle.model';
 
 export class ParticleRenderer {
@@ -53,10 +53,14 @@ export class ParticleRenderer {
 
     ctx.lineWidth = 1;
     for (const planet of planets) {
+      ctx.save();
+      ctx.translate(centerX, centerY);
+      ctx.rotate(planet.orbitRotation); // Properly rotate ellipse at arbitrary angles
       ctx.strokeStyle = `rgba(${planet.color}, 0.08)`;
       ctx.beginPath();
-      ctx.ellipse(centerX, centerY, planet.orbitRadiusX, planet.orbitRadiusY, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, 0, planet.orbitRadiusX, planet.orbitRadiusY, 0, 0, Math.PI * 2);
       ctx.stroke();
+      ctx.restore();
     }
   }
 
@@ -65,7 +69,6 @@ export class ParticleRenderer {
       ctx.save();
       ctx.translate(planet.x, planet.y);
 
-      // Soft ambient atmospheric bloom
       const bloomGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, planet.radius * 2.2);
       bloomGrad.addColorStop(0, `rgba(${planet.color}, 0.2)`);
       bloomGrad.addColorStop(1, `rgba(${planet.color}, 0)`);
@@ -74,7 +77,6 @@ export class ParticleRenderer {
       ctx.arc(0, 0, planet.radius * 2.2, 0, Math.PI * 2);
       ctx.fill();
 
-      // Clean flat tactical node body
       const fillGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, planet.radius);
       fillGrad.addColorStop(0, `rgba(15, 25, 40, 0.95)`);
       fillGrad.addColorStop(1, `rgba(8, 12, 20, 0.98)`);
@@ -90,7 +92,6 @@ export class ParticleRenderer {
       ctx.stroke();
       ctx.shadowBlur = 0;
 
-      // Subtle tactical crosshair inside the node
       ctx.strokeStyle = `rgba(${planet.color}, 0.4)`;
       ctx.lineWidth = 1;
       ctx.beginPath();
@@ -102,7 +103,6 @@ export class ParticleRenderer {
 
       ctx.restore();
 
-      // Moons
       for (const moon of planet.moons) {
         ctx.shadowBlur = 4;
         ctx.shadowColor = `rgba(${planet.color}, 0.7)`;
@@ -117,15 +117,30 @@ export class ParticleRenderer {
 
   public drawBackgroundParticles(ctx: CanvasRenderingContext2D, particles: Particle[]): void {
     for (const p of particles) {
-      if (p.z >= 3) continue;
-      this.renderSingleParticle(ctx, p);
+      if (this.shouldDrawInLayer(p, 'background')) {
+        this.renderSingleParticle(ctx, p);
+      }
     }
   }
 
   public drawForegroundParticles(ctx: CanvasRenderingContext2D, particles: Particle[]): void {
     for (const p of particles) {
-      if (p.z < 3) continue;
-      this.renderSingleParticle(ctx, p);
+      if (this.shouldDrawInLayer(p, 'foreground')) {
+        this.renderSingleParticle(ctx, p);
+      }
+    }
+  }
+
+  private shouldDrawInLayer(p: Particle, layer: 'background' | 'foreground'): boolean {
+    const behavior = p.activePlanetInteraction?.behavior;
+    if (layer === 'background') {
+      if (behavior === 'behind') return true;
+      if (behavior === 'over') return false;
+      return p.z < 3;
+    } else {
+      if (behavior === 'over') return true;
+      if (behavior === 'behind') return false;
+      return p.z >= 3;
     }
   }
 
